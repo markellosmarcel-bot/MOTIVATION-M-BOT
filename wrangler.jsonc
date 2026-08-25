@@ -1,0 +1,8 @@
+{
+  "name": "motivation-m-bot",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-25",
+  "triggers": {
+    "crons": ["0 18 * * *"]
+  }
+}
