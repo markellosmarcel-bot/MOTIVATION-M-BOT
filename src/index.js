@@ -1,118 +1,97 @@
 const motivations = {
   discipline: [
     "La discipline te fait avancer même quand la motivation disparaît.",
-    "Une petite action aujourd’hui vaut mieux qu’une grande intention demain.",
-    "Fais maintenant ce que ton futur toi te remerciera d’avoir commencé."
+    "Une petite action aujourd'hui vaut mieux qu'une grande intention demain.",
+    "Fais maintenant ce que ton futur toi te remerciera d'avoir fait.",
+    "La constance transforme les petits efforts en grands résultats."
   ],
 
   confiance: [
-    "Crois en ta capacité d’apprendre, de progresser et de réussir.",
-    "Tu n’as pas besoin d’être parfait pour commencer.",
-    "Chaque étape franchie renforce ta confiance."
+    "Crois en ta capacité d'apprendre, de progresser et de recommencer.",
+    "Tu n'as pas besoin d'être parfait pour commencer.",
+    "Chaque étape franchie renforce ta confiance.",
+    "Ne laisse pas un mauvais jour définir ton potentiel."
   ],
 
-  reussite: [
+  réussite: [
     "La réussite se construit avec des actions répétées.",
     "Continue. Même lentement, tu avances.",
-    "Transforme ton objectif en petites actions concrètes."
-  ],
-
-  argent: [
-    "Apprends une compétence utile et transforme-la progressivement en valeur.",
-    "Construis quelque chose qui peut servir aux autres.",
-    "La patience et la régularité comptent autant que l’ambition."
+    "Transforme ton objectif en petites actions réalisables.",
+    "Ce que tu construis aujourd'hui peut changer ton avenir."
   ],
 
   courage: [
-    "Le courage, c’est avancer malgré le doute.",
-    "N’attends pas de ne plus avoir peur pour commencer.",
-    "Aujourd’hui, fais simplement la prochaine étape."
-  ],
-
-  travail: [
-    "Concentre-toi sur la prochaine tâche, pas sur toute la montagne.",
-    "Travaille intelligemment, régulièrement et avec patience.",
-    "Chaque journée productive construit ton projet."
+    "Le courage, ce n'est pas l'absence de peur : c'est avancer malgré elle.",
+    "N'abandonne pas simplement parce que le chemin est difficile.",
+    "Tu es plus capable que tu ne le crois.",
+    "Chaque difficulté peut devenir une leçon."
   ]
 };
 
-function getMotivation(theme) {
-  const list = motivations[theme] || motivations.discipline;
-  return list[Math.floor(Math.random() * list.length)];
+function randomItem(array) {
+  return array[Math.floor(Math.random() * array.length)];
 }
 
-function html() {
-  return `<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MOTIVATION-M-BOT</title>
+function generateMotivation(category) {
+  const key = category && motivations[category]
+    ? category
+    : randomItem(Object.keys(motivations));
 
-<style>
-* {
-  box-sizing: border-box;
+  return {
+    category: key,
+    message: randomItem(motivations[key]),
+    date: new Date().toISOString()
+  };
 }
 
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #102d50;
-  color: white;
-}
+export default {
+  async fetch(request) {
+    const url = new URL(request.url);
 
-header {
-  text-align: center;
-  padding: 40px 20px 25px;
-}
+    if (url.pathname === "/") {
+      return new Response(
+        JSON.stringify({
+          bot: "MOTIVATION-M-BOT",
+          status: "online",
+          message: "Le bot fonctionne correctement.",
+          endpoints: [
+            "/motivation",
+            "/motivation?category=discipline",
+            "/motivation?category=confiance",
+            "/motivation?category=reussite",
+            "/motivation?category=courage"
+          ]
+        }, null, 2),
+        {
+          headers: {
+            "Content-Type": "application/json; charset=UTF-8"
+          }
+        }
+      );
+    }
 
-.robot {
-  font-size: 75px;
-}
+    if (url.pathname === "/motivation") {
+      const category = url.searchParams.get("category");
+      const result = generateMotivation(category);
 
-h1 {
-  font-size: 32px;
-  margin: 10px 0;
-}
+      return new Response(JSON.stringify(result, null, 2), {
+        headers: {
+          "Content-Type": "application/json; charset=UTF-8",
+          "Cache-Control": "no-store"
+        }
+      });
+    }
 
-.subtitle {
-  font-size: 18px;
-  line-height: 1.5;
-}
-
-.card {
-  max-width: 650px;
-  margin: 20px auto;
-  padding: 28px;
-  background: white;
-  color: #17253a;
-  border-radius: 28px;
-}
-
-button {
-  border: 0;
-  border-radius: 25px;
-  padding: 14px 18px;
-  margin: 5px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-#result {
-  margin-top: 25px;
-  padding: 24px;
-  border-radius: 20px;
-  background: #f1f5f9;
-  font-size: 20px;
-  line-height: 1.5;
-  font-weight: bold;
-}
-</style>
-</head>
-
-<body>
-
-<header>
-  <div class="robot">🤖</div>
-  <h1>MOTIVATION-M-BOT</h1>
+    return new Response(
+      JSON.stringify({
+        error: "Route introuvable"
+      }),
+      {
+        status: 404,
+        headers: {
+          "Content-Type": "application/json; charset=UTF-8"
+        }
+      }
+    );
+  }
+};
