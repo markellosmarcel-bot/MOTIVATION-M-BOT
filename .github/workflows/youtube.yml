@@ -24,6 +24,7 @@ jobs:
 
           QUOTE=$(python - <<'PY'
           import random
+
           quotes = [
             "La discipline te fait avancer même quand la motivation disparaît.",
             "Une petite action aujourd'hui peut changer ton avenir.",
@@ -34,16 +35,26 @@ jobs:
             "Continue. Même lentement, tu avances.",
             "Le courage commence lorsque tu refuses d'abandonner."
           ]
+
           print(random.choice(quotes))
           PY
           )
 
           ffmpeg -y \
-            -f lavfi -i "color=c=0x07111f:s=1080x1920:d=15" \
-            -vf "drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='MOTIVATION M-BOT':fontcolor=white:fontsize=64:x=(w-text_w)/2:y=420,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${QUOTE}':fontcolor=white:fontsize=48:line_spacing=18:x=90:y=(h-text_h)/2:enable='between(t,1,14)',drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='ABONNE-TOI POUR PLUS DE MOTIVATION':fontcolor=white:fontsize=34:x=(w-text_w)/2:y=1660" \
+            -f lavfi \
+            -i "color=c=0x07111f:s=1080x1920:d=15" \
+            -vf "drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='MOTIVATION M-BOT':fontcolor=white:fontsize=64:x=(w-text_w)/2:y=420,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${QUOTE}':fontcolor=white:fontsize=48:line_spacing=18:x=90:y=(h-text_h)/2,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='ABONNE-TOI POUR PLUS DE MOTIVATION':fontcolor=white:fontsize=34:x=(w-text_w)/2:y=1660" \
             -c:v libx264 \
             -pix_fmt yuv420p \
             -t 15 \
+            output/motivation.mp4
+
+      - name: Vérifier la vidéo
+        run: |
+          ls -lh output/motivation.mp4
+          ffprobe -v error \
+            -show_entries format=duration \
+            -of default=noprint_wrappers=1 \
             output/motivation.mp4
 
       - name: Installer les outils YouTube
@@ -52,24 +63,27 @@ jobs:
           pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
 
       - name: Publier sur YouTube
-        if: ${{ secrets.YOUTUBE_CLIENT_JSON != '' && secrets.YOUTUBE_REFRESH_TOKEN != '' }}
         env:
           YOUTUBE_CLIENT_JSON: ${{ secrets.YOUTUBE_CLIENT_JSON }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: |
           python - <<'PY'
-          import json, os
+          import json
+          import os
+
+          from google.auth.transport.requests import Request
           from google.oauth2.credentials import Credentials
           from googleapiclient.discovery import build
           from googleapiclient.http import MediaFileUpload
-          from google.auth.transport.requests import Request
 
           client = json.loads(os.environ["YOUTUBE_CLIENT_JSON"])
 
           if "installed" in client:
               data = client["installed"]
-          else:
+          elif "web" in client:
               data = client["web"]
+          else:
+              raise RuntimeError("Format YOUTUBE_CLIENT_JSON invalide.")
 
           credentials = Credentials(
               token=None,
@@ -82,14 +96,22 @@ jobs:
 
           credentials.refresh(Request())
 
-          youtube = build("youtube", "v3", credentials=credentials)
+          youtube = build(
+              "youtube",
+              "v3",
+              credentials=credentials
+          )
 
           request = youtube.videos().insert(
               part="snippet,status",
               body={
                   "snippet": {
                       "title": "Motivation du jour | MOTIVATION M-BOT",
-                      "description": "Une dose de motivation pour avancer chaque jour.\n\n#motivation #discipline #reussite #developpementpersonnel",
+                      "description": (
+                          "Une dose de motivation pour avancer chaque jour.\n\n"
+                          "#motivation #discipline #reussite "
+                          "#developpementpersonnel #shorts"
+                      ),
                       "categoryId": "22"
                   },
                   "status": {
@@ -105,10 +127,11 @@ jobs:
           )
 
           response = request.execute()
+
           print("VIDÉO YOUTUBE CRÉÉE :", response["id"])
           PY
 
-      - name: Sauvegarder l'APK vidéo
+      - name: Sauvegarder la vidéo
         uses: actions/upload-artifact@v4
         with:
           name: motivation-video
